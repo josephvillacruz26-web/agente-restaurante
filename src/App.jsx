@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 
 // ⚠️ Reemplaza con tu API key de Google Gemini
-const GEMINI_API_KEY ="AIzaSyAVBZUPrkF22wQvukaJ2Qdi4geG2nmoFFE";
+const GEMINI_API_KEY ="AIzaSyDbOXrmZHWQnS_2zH2xTUIHfYUNf5voVu0";
 
 const RESTAURANT = {
   name: "La Buena Mesa",
