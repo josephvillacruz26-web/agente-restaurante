@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 
+// ⚠️ Reemplaza con tu API key de Google Gemini
+const GEMINI_API_KEY =AIzaSyAVBZUPrkF22wQvukaJ2Qdi4geG2nmoFFE;
+
 const RESTAURANT = {
   name: "La Buena Mesa",
   emoji: "🍽️",
@@ -81,19 +84,29 @@ export default function RestaurantAgent() {
     setLoading(true);
 
     try {
-      const apiMessages = newMessages.map(m => ({ role: m.role, content: m.content }));
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: SYSTEM_PROMPT,
-          messages: apiMessages
-        })
-      });
+      const history = newMessages.slice(1, -1).map(m => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }]
+      }));
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents: [
+              ...history,
+              { role: "user", parts: [{ text: userText }] }
+            ],
+            generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
+          })
+        }
+      );
+
       const data = await res.json();
-      const reply = data.content?.map(b => b.text || "").join("") || "Lo siento, hubo un error. Por favor intenta de nuevo.";
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, hubo un error. Por favor intenta de nuevo.";
       setMessages(prev => [...prev, { role: "assistant", content: reply }]);
     } catch (e) {
       setMessages(prev => [...prev, { role: "assistant", content: "Lo siento, hubo un problema de conexión. 😔 Por favor intenta de nuevo." }]);
@@ -113,13 +126,8 @@ export default function RestaurantAgent() {
 
   return (
     <div style={{
-      minHeight: "100vh",
-      background: "#1a0a00",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "1rem",
+      minHeight: "100vh", background: "#1a0a00", display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", padding: "1rem",
       fontFamily: "'Crimson Pro', Georgia, serif",
       backgroundImage: "radial-gradient(ellipse at 50% 0%, rgba(200,100,0,0.15) 0%, transparent 70%)"
     }}>
@@ -137,7 +145,6 @@ export default function RestaurantAgent() {
         .chat-input:focus { border-color: rgba(200,100,0,0.5); }
         .chat-input::placeholder { color: #6a3a20; }
         ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(200,100,0,0.3); border-radius: 2px; }
         .typing-dot { animation: blink 1.2s infinite; display: inline-block; }
         .typing-dot:nth-child(2) { animation-delay: 0.2s; }
@@ -146,71 +153,28 @@ export default function RestaurantAgent() {
       `}</style>
 
       <div style={{ width: "100%", maxWidth: "480px", display: "flex", flexDirection: "column", height: "90vh", maxHeight: "700px" }}>
-
-        {/* Header */}
-        <div style={{
-          background: "linear-gradient(135deg, #2a1000, #3a1800)",
-          border: "1px solid rgba(200,100,0,0.3)",
-          borderRadius: "16px 16px 0 0",
-          padding: "1rem 1.2rem",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.8rem",
-          borderBottom: "1px solid rgba(200,100,0,0.2)"
-        }}>
-          <div style={{ width: "42px", height: "42px", borderRadius: "50%", background: "linear-gradient(135deg, #c85a00, #e07030)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", flexShrink: 0 }}>
-            🍽️
-          </div>
+        <div style={{ background: "linear-gradient(135deg, #2a1000, #3a1800)", border: "1px solid rgba(200,100,0,0.3)", borderRadius: "16px 16px 0 0", padding: "1rem 1.2rem", display: "flex", alignItems: "center", gap: "0.8rem", borderBottom: "1px solid rgba(200,100,0,0.2)" }}>
+          <div style={{ width: "42px", height: "42px", borderRadius: "50%", background: "linear-gradient(135deg, #c85a00, #e07030)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", flexShrink: 0 }}>🍽️</div>
           <div>
             <div style={{ color: "#f0a060", fontWeight: "600", fontSize: "1rem" }}>{RESTAURANT.name}</div>
             <div style={{ color: "#8a5030", fontSize: "0.75rem", fontFamily: "'DM Mono', monospace" }}>
               <span style={{ color: "#4a9a4a", marginRight: "4px" }}>●</span> Asistente en línea
             </div>
           </div>
-          <div style={{ marginLeft: "auto", fontFamily: "'DM Mono', monospace", fontSize: "0.65rem", color: "#6a3a20", textAlign: "right" }}>
-            DEMO<br/>Agente IA
-          </div>
+          <div style={{ marginLeft: "auto", fontFamily: "'DM Mono', monospace", fontSize: "0.65rem", color: "#6a3a20", textAlign: "right" }}>DEMO<br/>Agente IA</div>
         </div>
 
-        {/* Messages */}
-        <div style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "1rem",
-          background: "rgba(10,4,0,0.8)",
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.8rem"
-        }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "1rem", background: "rgba(10,4,0,0.8)", display: "flex", flexDirection: "column", gap: "0.8rem" }}>
           {messages.map((msg, i) => (
-            <div key={i} className="msg-bubble" style={{
-              display: "flex",
-              justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-              gap: "0.5rem",
-              alignItems: "flex-end"
-            }}>
+            <div key={i} className="msg-bubble" style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", gap: "0.5rem", alignItems: "flex-end" }}>
               {msg.role === "assistant" && (
-                <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "linear-gradient(135deg, #c85a00, #e07030)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", flexShrink: 0 }}>
-                  🍽️
-                </div>
+                <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "linear-gradient(135deg, #c85a00, #e07030)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", flexShrink: 0 }}>🍽️</div>
               )}
-              <div style={{
-                maxWidth: "78%",
-                padding: "0.7rem 1rem",
-                borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                background: msg.role === "user"
-                  ? "linear-gradient(135deg, #c85a00, #e07030)"
-                  : "rgba(255,255,255,0.06)",
-                border: msg.role === "user" ? "none" : "1px solid rgba(200,100,0,0.15)",
-                color: msg.role === "user" ? "white" : "#e0c0a0",
-                fontSize: "0.95rem",
-                lineHeight: "1.5"
-              }}>
+              <div style={{ maxWidth: "78%", padding: "0.7rem 1rem", borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: msg.role === "user" ? "linear-gradient(135deg, #c85a00, #e07030)" : "rgba(255,255,255,0.06)", border: msg.role === "user" ? "none" : "1px solid rgba(200,100,0,0.15)", color: msg.role === "user" ? "white" : "#e0c0a0", fontSize: "0.95rem", lineHeight: "1.5" }}>
                 {formatText(msg.content)}
               </div>
             </div>
           ))}
-
           {loading && (
             <div className="msg-bubble" style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
               <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "linear-gradient(135deg, #c85a00, #e07030)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem" }}>🍽️</div>
@@ -224,51 +188,22 @@ export default function RestaurantAgent() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Quick questions */}
-        <div style={{
-          background: "rgba(10,4,0,0.9)",
-          padding: "0.6rem 1rem",
-          borderTop: "1px solid rgba(200,100,0,0.1)",
-          overflowX: "auto",
-          display: "flex",
-          gap: "0.5rem",
-          scrollbarWidth: "none"
-        }}>
+        <div style={{ background: "rgba(10,4,0,0.9)", padding: "0.6rem 1rem", borderTop: "1px solid rgba(200,100,0,0.1)", overflowX: "auto", display: "flex", gap: "0.5rem", scrollbarWidth: "none" }}>
           {QUICK_QUESTIONS.map((q, i) => (
             <button key={i} className="quick-btn" onClick={() => sendMessage(q)}>{q}</button>
           ))}
         </div>
 
-        {/* Input */}
-        <div style={{
-          background: "rgba(15,6,0,0.95)",
-          padding: "0.8rem 1rem",
-          borderRadius: "0 0 16px 16px",
-          border: "1px solid rgba(200,100,0,0.3)",
-          borderTop: "none",
-          display: "flex",
-          gap: "0.6rem"
-        }}>
-          <input
-            ref={inputRef}
-            className="chat-input"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && sendMessage()}
-            placeholder="Escribe tu pregunta..."
-            disabled={loading}
-          />
-          <button className="send-btn" onClick={() => sendMessage()} disabled={loading || !input.trim()}>
-            Enviar
-          </button>
+        <div style={{ background: "rgba(15,6,0,0.95)", padding: "0.8rem 1rem", borderRadius: "0 0 16px 16px", border: "1px solid rgba(200,100,0,0.3)", borderTop: "none", display: "flex", gap: "0.6rem" }}>
+          <input ref={inputRef} className="chat-input" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMessage()} placeholder="Escribe tu pregunta..." disabled={loading} />
+          <button className="send-btn" onClick={() => sendMessage()} disabled={loading || !input.trim()}>Enviar</button>
         </div>
-
       </div>
 
-      {/* Demo badge */}
       <div style={{ marginTop: "0.8rem", fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "#4a2a10", textAlign: "center" }}>
         Este es un demo — personalizable para cualquier negocio
       </div>
     </div>
   );
 }
+
